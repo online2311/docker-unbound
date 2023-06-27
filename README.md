@@ -4,11 +4,6 @@
 Docker image for [Unbound](https://unbound.net/), a validating, recursive, and
 caching DNS resolver.
 
-> **Note**
-> 
-> Want to be notified of new releases? Check out 🔔 [Diun (Docker Image Update Notifier)](https://github.com/crazy-max/diun)
-> project!
-
 ___
 
 * [Features](#features)
@@ -40,10 +35,10 @@ git clone https://github.com/online2311/docker-unbound.git
 cd docker-unbound
 
 # Build image and output to docker (default)
-docker buildx build
+docker buildx bake
 
 # Build multi-platform image
-docker buildx build image-all
+docker buildx bake image-all
 ```
 
 ## Image

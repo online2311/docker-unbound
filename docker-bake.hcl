@@ -1,5 +1,5 @@
 variable "DEFAULT_TAG" {
-  default = "unbound:local"
+  default = "nodecloud/unbound:latest"
 }
 
 // Special target: https://github.com/docker/metadata-action#bake-definition

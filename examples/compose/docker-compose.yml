@@ -1,11 +1,20 @@
+version: "3.9"
 services:
   unbound:
-    image: nodecloud/unbound
+    image: nodecloud/unbound:latest
     container_name: unbound
     ports:
-      - 53:53
-      - 53:53/udp
+      - "53:53/tcp"
+      - "53:53/udp"
     volumes:
       - "./config:/config:ro"
     restart: always
-    
+  redis:
+    image: redis:alpine
+    container_name: unbound-redis
+    command: redis-server --save 43200 1 7200 100 --loglevel warning --rdbchecksum no 
+    volumes:
+      - "redis-data:/data"
+    restart: always
+volumes:
+  redis-data:

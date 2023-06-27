@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG UNBOUND_VERSION=1.17.0
+ARG UNBOUND_VERSION=1.17.1
 ARG LDNS_VERSION=1.8.3
 ARG XX_VERSION=1.1.2
 ARG ALPINE_VERSION=3.17
@@ -124,8 +124,8 @@ RUN mkdir -p /config \
 
 USER unbound
 
-EXPOSE 5053/tcp
-EXPOSE 5053/udp
+EXPOSE 53/tcp
+EXPOSE 53/udp
 VOLUME [ "/config" ]
 
 COPY <<-"EOF" /entrypoint.sh
