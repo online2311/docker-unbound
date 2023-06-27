@@ -1,13 +1,3 @@
-<p align="center"><a href="https://github.com/crazy-max/docker-unbound" target="_blank"><img height="128" src="https://raw.githubusercontent.com/crazy-max/docker-unbound/master/.github/docker-unbound.jpg"></a></p>
-
-<p align="center">
-  <a href="https://hub.docker.com/r/crazymax/unbound/tags?page=1&ordering=last_updated"><img src="https://img.shields.io/github/v/tag/crazy-max/docker-unbound?label=version&style=flat-square" alt="Latest Version"></a>
-  <a href="https://github.com/crazy-max/docker-unbound/actions?workflow=build"><img src="https://img.shields.io/github/actions/workflow/status/crazy-max/docker-unbound/build.yml?branch=master&label=build&logo=github&style=flat-square" alt="Build Status"></a>
-  <a href="https://hub.docker.com/r/crazymax/unbound/"><img src="https://img.shields.io/docker/stars/crazymax/unbound.svg?style=flat-square&logo=docker" alt="Docker Stars"></a>
-  <a href="https://hub.docker.com/r/crazymax/unbound/"><img src="https://img.shields.io/docker/pulls/crazymax/unbound.svg?style=flat-square&logo=docker" alt="Docker Pulls"></a>
-  <br /><a href="https://github.com/sponsors/crazy-max"><img src="https://img.shields.io/badge/sponsor-crazy--max-181717.svg?logo=github&style=flat-square" alt="Become a sponsor"></a>
-  <a href="https://www.paypal.me/crazyws"><img src="https://img.shields.io/badge/donate-paypal-00457c.svg?logo=paypal&style=flat-square" alt="Donate Paypal"></a>
-</p>
 
 ## About
 
@@ -46,28 +36,28 @@ ___
 ## Build locally
 
 ```shell
-git clone https://github.com/crazy-max/docker-unbound.git
+git clone https://github.com/online2311/docker-unbound.git
 cd docker-unbound
 
 # Build image and output to docker (default)
-docker buildx bake
+docker buildx build
 
 # Build multi-platform image
-docker buildx bake image-all
+docker buildx build image-all
 ```
 
 ## Image
 
 | Registry                                                                                           | Image                       |
 |----------------------------------------------------------------------------------------------------|-----------------------------|
-| [Docker Hub](https://hub.docker.com/r/crazymax/unbound/)                                           | `crazymax/unbound`          |
-| [GitHub Container Registry](https://github.com/users/crazy-max/packages/container/package/unbound) | `ghcr.io/crazy-max/unbound` |
+| [Docker Hub](https://hub.docker.com/r/nodecloud/unbound/)                                           | `nodecloud/unbound`          |
+
 
 Following platforms for this image are available:
 
 ```
-$ docker run --rm mplatform/mquery crazymax/unbound:latest
-Image: crazymax/unbound:latest
+$ docker run --rm mplatform/mquery nodecloud/unbound:latest
+Image: nodecloud/unbound:latest
  * Manifest List: Yes
  * Supported platforms:
    - linux/amd64
@@ -84,7 +74,7 @@ Image: crazymax/unbound:latest
 
 ## Ports
 
-* `5053/tcp 5053/udp`: DNS listening port
+* `53/tcp 53/udp`: DNS listening port
 
 ## Usage
 
@@ -104,7 +94,7 @@ docker compose logs -f
 You can also use the following minimal command:
 
 ```shell
-docker run -d -p 5053:5053 --name unbound crazymax/unbound
+docker run -d -p 53:53 -p 53:53/udp --name unbound nodecloud/unbound
 ```
 
 ## Upgrade
@@ -157,7 +147,7 @@ If you want to generate a new key, you can use [`unbound-anchor`](https://nlnetl
 which is available in this image:
 
 ```shell
-docker run -t --rm --entrypoint "" -v "$(pwd):/trust-anchor" crazymax/unbound:latest \
+docker run -t --rm --entrypoint "" -v "$(pwd):/trust-anchor" nodecloud/unbound:latest \
   unbound-anchor -v -a "/trust-anchor/root.key"
 ```
 
@@ -178,15 +168,11 @@ And bind mount the key:
 ```yaml
 services:
   unbound:
-    image: crazymax/unbound
+    image: nodecloud/unbound
     container_name: unbound
     ports:
-      - target: 5053
-        published: 5053
-        protocol: tcp
-      - target: 5053
-        published: 5053
-        protocol: udp
+      - 53:53
+      - 53:53/udp
     volumes:
       - "./config:/config"
       - "./root.key:/root.key"
@@ -212,17 +198,13 @@ services:
     restart: always
 
   unbound:
-    image: crazymax/unbound
+    image: nodecloud/unbound
     container_name: unbound
     depends_on:
       - redis
     ports:
-      - target: 5053
-        published: 5053
-        protocol: tcp
-      - target: 5053
-        published: 5053
-        protocol: udp
+      - 53:53
+      - 53:53/udp
     volumes:
       - "./config:/config:ro"
     restart: always
