@@ -108,6 +108,7 @@ RUN apk --update --no-cache add \
     libpcap \
     openssl \
     shadow \
+    libcap \
   && mkdir -p /run/unbound \
   && unbound -V \
   && unbound-anchor -v || true \
@@ -121,19 +122,89 @@ RUN mkdir -p /config \
   && adduser -D -H -u 1500 -G unbound -s /bin/sh unbound \
   && chown -R unbound. /etc/unbound /run/unbound \
   && rm -rf /tmp/*
+RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/unbound
+# USER unbound
 
-USER unbound
+COPY <<-"EOF" /unbound-ext.conf
+  cachedb:
+    backend: "redis"
+    secret-seed: "default"
+    redis-server-host: 127.0.0.1
+    redis-server-port: 6379
 
-EXPOSE 53/tcp
-EXPOSE 53/udp
-VOLUME [ "/config" ]
+  forward-zone:
+    name: "."
+    forward-addr: 127.0.0.1@5353
+    # forward-tls-upstream: yes
+
+      # https://dnsprivacy.org/wiki/display/DP/DNS+Privacy+Test+Servers
+
+      ## Cloudflare
+      #forward-addr: 1.1.1.1@853#cloudflare-dns.com
+      #forward-addr: 1.0.0.1@853#cloudflare-dns.com
+      #forward-addr: 2606:4700:4700::1111@853#cloudflare-dns.com
+      #forward-addr: 2606:4700:4700::1001@853#cloudflare-dns.com
+
+      ## Cloudflare Malware
+      # forward-addr: 1.1.1.2@853#security.cloudflare-dns.com
+      # forward-addr: 1.0.0.2@853#security.cloudflare-dns.com
+      # forward-addr: 2606:4700:4700::1112@853#security.cloudflare-dns.com
+      # forward-addr: 2606:4700:4700::1002@853#security.cloudflare-dns.com
+
+      ## Cloudflare Malware and Adult Content
+      # forward-addr: 1.1.1.3@853#family.cloudflare-dns.com
+      # forward-addr: 1.0.0.3@853#family.cloudflare-dns.com
+      # forward-addr: 2606:4700:4700::1113@853#family.cloudflare-dns.com
+      # forward-addr: 2606:4700:4700::1003@853#family.cloudflare-dns.com
+
+      ## CleanBrowsing Security Filter
+      # forward-addr: 185.228.168.9@853#security-filter-dns.cleanbrowsing.org
+      # forward-addr: 185.228.169.9@853#security-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:1::2@853#security-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:2::2@853#security-filter-dns.cleanbrowsing.org
+
+      ## CleanBrowsing Adult Filter
+      # forward-addr: 185.228.168.10@853#adult-filter-dns.cleanbrowsing.org
+      # forward-addr: 185.228.169.11@853#adult-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:1::1@853#adult-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:2::1@853#adult-filter-dns.cleanbrowsing.org
+
+      ## CleanBrowsing Family Filter
+      # forward-addr: 185.228.168.168@853#family-filter-dns.cleanbrowsing.org
+      # forward-addr: 185.228.169.168@853#family-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:1::@853#family-filter-dns.cleanbrowsing.org
+      # forward-addr: 2a0d:2a00:2::@853#family-filter-dns.cleanbrowsing.org
+
+      ## Quad9
+      # forward-addr: 9.9.9.9@853#dns.quad9.net
+      # forward-addr: 149.112.112.112@853#dns.quad9.net
+      # forward-addr: 2620:fe::fe@853#dns.quad9.net
+      # forward-addr: 2620:fe::9@853#dns.quad9.net
+
+      ## getdnsapi.net
+      # forward-addr: 185.49.141.37@853#getdnsapi.net
+      # forward-addr: 2a04:b900:0:100::37@853#getdnsapi.net
+
+      ## Surfnet
+      # forward-addr: 145.100.185.15@853#dnsovertls.sinodun.com
+      # forward-addr: 145.100.185.16@853#dnsovertls1.sinodun.com
+      # forward-addr: 2001:610:1:40ba:145:100:185:15@853#dnsovertls.sinodun.com
+      # forward-addr: 2001:610:1:40ba:145:100:185:16@853#dnsovertls1.sinodun.com
+EOF
 
 COPY <<-"EOF" /entrypoint.sh
 	#!/bin/sh
 	set -e
+  if [ ! -f /config/unbound-ext.conf ]; then
+    cp /unbound-ext.conf /config/unbound-ext.conf
+  fi
 	unbound-checkconf /etc/unbound/unbound.conf
 	exec unbound -d -c /etc/unbound/unbound.conf
 EOF
+
+EXPOSE 53/tcp
+EXPOSE 53/udp
+VOLUME [ "/config" ]
 CMD sh /entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=10s \

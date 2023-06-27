@@ -3,16 +3,20 @@ services:
   unbound:
     image: nodecloud/unbound:latest
     container_name: unbound
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+    network_mode: host
+    restart: always
     volumes:
-      - "./config:/config:ro"
+      - "./config:/config"
+  easymosdns:
+    image: nodecloud/easymosdns:latest
+    container_name: easymosdns
+    network_mode: host
     restart: always
   redis:
     image: redis:alpine
-    container_name: unbound-redis
-    command: redis-server --save 43200 1 7200 100 --loglevel warning --rdbchecksum no 
+    container_name: redis
+    network_mode: host
+    command: redis-server --bind 127.0.0.1 --save 43200 1 7200 100 --loglevel warning --rdbchecksum no --io-threads 4 --io-threads-do-reads yes # --io-threads 4 根据实际情况调整具体CPU核心数
     volumes:
       - "redis-data:/data"
     restart: always
