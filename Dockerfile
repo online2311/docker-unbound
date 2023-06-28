@@ -99,6 +99,8 @@ FROM alpine:${ALPINE_VERSION}
 COPY --from=unbound-build /out /
 COPY --from=ldns-build /out /
 
+RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
+
 RUN apk --update --no-cache add \
     ca-certificates \
     dns-root-hints \
@@ -110,6 +112,7 @@ RUN apk --update --no-cache add \
     openssl \
     shadow \
     libcap \
+    dnsperf \
   && mkdir -p /run/unbound \
   && unbound -V \
   && unbound-anchor -v || true \
@@ -124,10 +127,12 @@ RUN mkdir -p /config \
   && chown -R unbound. /etc/unbound /run/unbound \
   && rm -rf /tmp/*
 RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/unbound & rm -f /etc/unbound/unbound.conf
+ADD easymosdns/config /etc/mosdns
+COPY --from=irinesistiana/mosdns:v4.5.3 /usr/bin/mosdns /usr/bin/mosdns
+
 # USER unbound
 
 COPY <<-"EOF" /unbound.conf
-
 server:
   verbosity: 1
   module-config: "validator cachedb iterator"
@@ -168,14 +173,14 @@ server:
   msg-cache-size: 128m
   outgoing-range: 8192
   num-queries-per-thread: 4096
-  so-rcvbuf: 16m
-  so-sndbuf: 16m
-  so-reuseport: yes
+  # so-rcvbuf: 16m
+  # so-sndbuf: 16m
+  # so-reuseport: yes
 
   cachedb:
     backend: "redis"
     secret-seed: "default"
-    redis-server-host: 127.0.0.1
+    redis-server-host: redis
     redis-server-port: 6379
 
   forward-zone:
@@ -244,39 +249,13 @@ COPY <<-"EOF" /entrypoint.sh
   if [ ! -f /etc/unbound/unbound.conf ]; then
     cp /unbound.conf /etc/unbound/unbound.conf
   fi
-  if [ -x "$(command -v sysctl)" ]; then
-      sysctl -w net.core.rmem_max=16777216 > /dev/null 2>&1
-      if [ $? -eq 0 ]; then
-          echo "Successfully set net.core.rmem_max to 16777216."
-      else
-          echo "Failed to set net.core.rmem_max. The container may not have privileged permissions."
-          sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
-      fi
-  else
-      echo "The sysctl command is not executable."
-  fi
-
-  if [ -x "$(command -v sysctl)" ]; then
-      # If it is, try to set net.core.wmem_max
-      sysctl -w net.core.wmem_max=16777216 > /dev/null 2>&1
-
-      # Check the exit status of the previous command
-      if [ $? -eq 0 ]; then
-          echo "Successfully set net.core.wmem_max to 16777216."
-      else
-          echo "Failed to set net.core.wmem_max. The container may not have privileged permissions."
-          sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
-      fi
-  else
-      echo "The sysctl command is not executable."
-  fi
 	unbound-checkconf /etc/unbound/unbound.conf
+  exec /usr/bin/mosdns start --dir /etc/mosdns --config config.yaml > /dev/null 2>&1 &
 	exec unbound -d -c /etc/unbound/unbound.conf
 EOF
 
 EXPOSE 53/tcp
 EXPOSE 53/udp
-VOLUME [ "/config" ]
 CMD sh /entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=10s \

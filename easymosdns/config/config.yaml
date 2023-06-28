@@ -40,7 +40,7 @@ plugins:
     type: cache
     args:
       size: 8192
-      redis: "redis://127.0.0.1:6379/0"
+      # redis: "redis://127.0.0.1:6379/0"
       lazy_cache_ttl: 86400
       cache_everything: true
       lazy_cache_reply_ttl: 1
@@ -49,7 +49,7 @@ plugins:
     args:
       size: 131072
       compress_resp: true
-      redis: "redis://127.0.0.1:6379/0"
+      # redis: "redis://127.0.0.1:6379/0"
       lazy_cache_ttl: 86400
       cache_everything: true
       lazy_cache_reply_ttl: 5
@@ -420,9 +420,9 @@ servers:
     timeout: 6
     listeners:
       - protocol: udp
-        addr: "0.0.0.0:5353"
+        addr: "127.0.0.1:5353"
       - protocol: tcp
-        addr: "0.0.0.0:5353"
+        addr: "127.0.0.1:5353"
       #- protocol: http
       #  addr: "127.0.0.1:9053"
       #  url_path: "/dns-query"
