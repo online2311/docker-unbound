@@ -166,10 +166,10 @@ server:
   cache-max-ttl: 86400
   rrset-cache-size: 256m
   msg-cache-size: 128m
-  outgoing-range: 2048
-  num-queries-per-thread: 512
-  so-rcvbuf: 4m
-  so-sndbuf: 4m
+  outgoing-range: 8192
+  num-queries-per-thread: 4096
+  so-rcvbuf: 16m
+  so-sndbuf: 16m
   so-reuseport: yes
 
   cachedb:
@@ -245,9 +245,9 @@ COPY <<-"EOF" /entrypoint.sh
     cp /unbound.conf /etc/unbound/unbound.conf
   fi
   if [ -x "$(command -v sysctl)" ]; then
-      sysctl -w net.core.rmem_max=4194304 > /dev/null 2>&1
+      sysctl -w net.core.rmem_max=16777216 > /dev/null 2>&1
       if [ $? -eq 0 ]; then
-          echo "Successfully set net.core.rmem_max to 4194304."
+          echo "Successfully set net.core.rmem_max to 16777216."
       else
           echo "Failed to set net.core.rmem_max. The container may not have privileged permissions."
           sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
@@ -258,11 +258,11 @@ COPY <<-"EOF" /entrypoint.sh
 
   if [ -x "$(command -v sysctl)" ]; then
       # If it is, try to set net.core.wmem_max
-      sysctl -w net.core.wmem_max=4194304 > /dev/null 2>&1
+      sysctl -w net.core.wmem_max=16777216 > /dev/null 2>&1
 
       # Check the exit status of the previous command
       if [ $? -eq 0 ]; then
-          echo "Successfully set net.core.wmem_max to 4194304."
+          echo "Successfully set net.core.wmem_max to 16777216."
       else
           echo "Failed to set net.core.wmem_max. The container may not have privileged permissions."
           sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
