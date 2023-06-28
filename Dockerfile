@@ -47,7 +47,8 @@ RUN --mount=type=bind,from=unbound-src,source=/src/unbound,target=.,rw <<EOT
     --disable-shared \
     --enable-cachedb \
     --enable-event-api \
-    --with-pthreads \
+    --without-pthreads \
+    --without-solaris-threads \
     --with-libhiredis=$(xx-info sysroot)usr \
     --with-libexpat=$(xx-info sysroot)usr \
     --with-libevent=$(xx-info sysroot)usr \
@@ -115,17 +116,60 @@ RUN apk --update --no-cache add \
   && ldns-config --version \
   && rm -rf /tmp/* /var/www/*
 
-COPY rootfs /
+# COPY rootfs /
 
 RUN mkdir -p /config \
   && addgroup -g 1500 unbound \
   && adduser -D -H -u 1500 -G unbound -s /bin/sh unbound \
   && chown -R unbound. /etc/unbound /run/unbound \
   && rm -rf /tmp/*
-RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/unbound
+RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/unbound & rm -f /etc/unbound/unbound.conf
 # USER unbound
 
-COPY <<-"EOF" /unbound-ext.conf
+COPY <<-"EOF" /unbound.conf
+
+server:
+  verbosity: 1
+  module-config: "validator cachedb iterator"
+  statistics-interval: 600
+  statistics-cumulative: yes
+
+  # set to 0 to avoid warning message when cachedb module is loaded.
+  # warning: cachedb: serve-expired-reply-ttl is set but not working for data originating from the external cache; 0 TLL is used for those.
+  serve-expired-reply-ttl: 0
+
+  interface: 0.0.0.0@53
+  do-ip4: yes
+  do-ip6: no
+  do-udp: yes
+  do-tcp: yes
+
+  do-daemonize: no
+
+  access-control: 0.0.0.0/0 allow
+
+  directory: "/etc/unbound"
+  logfile: ""
+  pidfile: "/var/run/unbound/unbound.pid"
+
+  identity: "NodeCloud_DNS_Service"
+  # auto-trust-anchor-file: "/var/run/unbound/root.key"
+  # tls-cert-bundle: /etc/ssl/certs/ca-certificates.crt
+  do-not-query-localhost: no
+
+  num-threads: 4
+  msg-cache-slabs: 4
+  rrset-cache-slabs: 4
+  infra-cache-slabs: 4
+  key-cache-slabs: 4
+  rrset-cache-size: 200m
+  msg-cache-size: 100m
+  outgoing-range: 1024
+  num-queries-per-thread: 512
+  so-rcvbuf: 4m
+  so-sndbuf: 4m
+  so-reuseport: yes
+
   cachedb:
     backend: "redis"
     secret-seed: "default"
@@ -195,8 +239,34 @@ EOF
 COPY <<-"EOF" /entrypoint.sh
 	#!/bin/sh
 	set -e
-  if [ ! -f /config/unbound-ext.conf ]; then
-    cp /unbound-ext.conf /config/unbound-ext.conf
+  if [ ! -f /etc/unbound/unbound.conf ]; then
+    cp /unbound.conf /etc/unbound/unbound.conf
+  fi
+  if [ -x "$(command -v sysctl)" ]; then
+      sysctl -w net.core.rmem_max=4194304 > /dev/null 2>&1
+      if [ $? -eq 0 ]; then
+          echo "Successfully set net.core.rmem_max to 4194304."
+      else
+          echo "Failed to set net.core.rmem_max. The container may not have privileged permissions."
+          sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
+      fi
+  else
+      echo "The sysctl command is not executable."
+  fi
+
+  if [ -x "$(command -v sysctl)" ]; then
+      # If it is, try to set net.core.wmem_max
+      sysctl -w net.core.wmem_max=4194304 > /dev/null 2>&1
+
+      # Check the exit status of the previous command
+      if [ $? -eq 0 ]; then
+          echo "Successfully set net.core.wmem_max to 4194304."
+      else
+          echo "Failed to set net.core.wmem_max. The container may not have privileged permissions."
+          sed -i '/so-rcvbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-sndbuf: 4m/d' /etc/unbound/unbound.conf && sed -i '/so-reuseport: yes/d' /etc/unbound/unbound.conf
+      fi
+  else
+      echo "The sysctl command is not executable."
   fi
 	unbound-checkconf /etc/unbound/unbound.conf
 	exec unbound -d -c /etc/unbound/unbound.conf
