@@ -162,9 +162,11 @@ server:
   rrset-cache-slabs: 4
   infra-cache-slabs: 4
   key-cache-slabs: 4
-  rrset-cache-size: 200m
-  msg-cache-size: 100m
-  outgoing-range: 1024
+  cache-min-ttl: 300
+  cache-max-ttl: 86400
+  rrset-cache-size: 256m
+  msg-cache-size: 128m
+  outgoing-range: 2048
   num-queries-per-thread: 512
   so-rcvbuf: 4m
   so-sndbuf: 4m
