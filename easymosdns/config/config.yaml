@@ -339,10 +339,10 @@ plugins:
             - ecs_global
             - primary:
                 # 默认用分流服务器
-                - forward_easymosdns
+                - forward_remote
               secondary:
                 # 超时用远程服务器
-                - forward_remote
+                - forward_easymosdns
               fast_fallback: 2500
               always_standby: false
             - ttl_5m
@@ -381,10 +381,10 @@ plugins:
             - ecs_global
             - primary:
                 # 默认用分流服务器
-                - forward_easymosdns
+                - forward_remote
               secondary:
                 # 超时用远程服务器
-                - forward_remote
+                - forward_easymosdns
               fast_fallback: 2500
               always_standby: false
             - ttl_5m
